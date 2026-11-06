@@ -1,17 +1,26 @@
-﻿using Smartwyre.DeveloperTest.Data;
+﻿using System;
+using Smartwyre.DeveloperTest.Data;
 using Smartwyre.DeveloperTest.Types;
 
 namespace Smartwyre.DeveloperTest.Services;
 
 public class RebateService : IRebateService
 {
+    private readonly IRebateDataStore _rebateDataStore;
+    private readonly IProductDataStore _productDataStore;
+
+    // Data stores are injected rather than created inside Calculate, so callers
+    // (and tests) decide which implementation is used.
+    public RebateService(IRebateDataStore rebateDataStore, IProductDataStore productDataStore)
+    {
+        _rebateDataStore = rebateDataStore ?? throw new ArgumentNullException(nameof(rebateDataStore));
+        _productDataStore = productDataStore ?? throw new ArgumentNullException(nameof(productDataStore));
+    }
+
     public CalculateRebateResult Calculate(CalculateRebateRequest request)
     {
-        var rebateDataStore = new RebateDataStore();
-        var productDataStore = new ProductDataStore();
-
-        Rebate rebate = rebateDataStore.GetRebate(request.RebateIdentifier);
-        Product product = productDataStore.GetProduct(request.ProductIdentifier);
+        Rebate rebate = _rebateDataStore.GetRebate(request.RebateIdentifier);
+        Product product = _productDataStore.GetProduct(request.ProductIdentifier);
 
         var result = new CalculateRebateResult();
 
@@ -90,8 +99,7 @@ public class RebateService : IRebateService
 
         if (result.Success)
         {
-            var storeRebateDataStore = new RebateDataStore();
-            storeRebateDataStore.StoreCalculationResult(rebate, rebateAmount);
+            _rebateDataStore.StoreCalculationResult(rebate, rebateAmount);
         }
 
         return result;
