@@ -54,6 +54,7 @@ public class RebateServiceTests
         var result = service.Calculate(_request);
 
         Assert.True(result.Success);
+        Assert.Equal(42m, result.Amount);
         calculator.Received(1).Calculate(_rebate, _product, _request);
         _rebateDataStore.Received(1).StoreCalculationResult(_rebate, 42m);
     }

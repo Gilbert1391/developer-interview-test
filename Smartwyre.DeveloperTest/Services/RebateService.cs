@@ -56,7 +56,7 @@ public class RebateService : IRebateService
         var rebateAmount = calculator.Calculate(rebate, product, request);
         _rebateDataStore.StoreCalculationResult(rebate, rebateAmount);
 
-        return new CalculateRebateResult { Success = true };
+        return new CalculateRebateResult { Success = true, Amount = rebateAmount };
     }
 
     private static CalculateRebateResult Failed() => new() { Success = false };
