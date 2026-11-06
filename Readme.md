@@ -44,3 +44,47 @@ You are free to use any frameworks/NuGet packages that you see fit. You should p
 Feel free to use code comments to describe your changes. You are also welcome to update this readme with any important details for us to consider.
 
 Once you have completed the exercise either ensure your repository is available publicly or contact the hiring manager to set up a private share.
+
+# Solution Notes
+
+## Running it
+
+Requires the .NET 10 SDK.
+
+```bash
+dotnet build
+dotnet test
+dotnet run --project Smartwyre.DeveloperTest.Runner -- UOM2 WIDGET 2.5   # arguments: rebate, product, volume
+dotnet run --project Smartwyre.DeveloperTest.Runner                      # no arguments: prompts for each value
+```
+
+The runner uses in-memory sample data (rebates `CASH10`, `RATE5`, `UOM2`; products `WIDGET`, `GADGET`) and lists it when prompting. Exit codes: `0` calculated, `1` invalid input, `2` rebate could not be calculated.
+
+## Design
+
+- **`RebateService`** coordinates the calculation: it looks up the rebate and product, picks the calculator for the rebate's incentive type, and stores the result. It no longer contains any incentive-specific rules.
+- **`IIncentiveCalculator`** has one implementation per incentive type (`FixedCashAmountCalculator`, `FixedRateRebateCalculator`, `AmountPerUomCalculator`). Each owns its validation (`CanCalculate`) and formula (`Calculate`). The rules are unchanged from the original switch statement.
+- **`IRebateDataStore` / `IProductDataStore`** are injected into the service instead of being created inside it, so the service can be tested with fakes and the runner can use in-memory stores.
+- Dependencies are wired with `Microsoft.Extensions.DependencyInjection` in the runner's `Program.cs`.
+
+## Adding a new incentive type
+
+1. Add a value to `IncentiveType` and a flag to `SupportedIncentiveType`.
+2. Add a class implementing `IIncentiveCalculator`.
+3. Register it in `Program.cs`: `.AddSingleton<IIncentiveCalculator, MyNewCalculator>()`.
+4. Add a test class for the calculator.
+
+`RebateService` and the existing calculators do not need to change.
+
+## Other changes
+
+- Fixed a `NullReferenceException` when the rebate was not found (the incentive type was read before the null check) and when a `FixedCashAmount` rebate had no product.
+- `CalculateRebateResult` now includes the calculated `Amount`.
+- `SupportedIncentiveType` is now marked `[Flags]`, since its values are combined as bit flags.
+- Added the missing project reference from the test project, and replaced the placeholder `PaymentService` test.
+- Tests use xUnit and NSubstitute: calculator tests cover each incentive's rules, and `RebateService` tests cover the orchestration with faked dependencies.
+
+## Possible next steps
+
+- Return a failure reason (rebate not found, product not supported, missing values) instead of only `Success = false`.
+- Decide whether negative amounts, percentages or volumes should be rejected. The original behavior was kept.
